@@ -1,0 +1,10 @@
+apps_dirs:
+  - "_build/*/lib/*"
+include_dirs:
+  - "_build/*/lib/"
+  - "_build/*/lib/*/include"
+diagnostics:
+  disabled:
+    - bound_var_in_pattern
+  enabled:
+    - crossref

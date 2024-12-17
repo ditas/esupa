@@ -1,0 +1,24 @@
+{application, esupa, [
+    {description, "Basic Supabase http/websocket tool"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {esupa_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        sasl,
+        inets,
+        ssl,
+        os_mon,
+        runtime_tools,
+        recon,
+        gun,
+        jsx
+    ]},
+    {env, []},
+    {modules, [
+
+    ]},
+    {licenses, ["Apache-2.0"]},
+    {links, []}
+ ]}.
