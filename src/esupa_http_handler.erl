@@ -26,6 +26,7 @@
 start_link(TId, HttpConf) ->
     gen_server:start_link(?MODULE, [TId, HttpConf], []).
 
+-spec request(pid(), Method :: get | post | update | delete, string(), [{Key :: string(), Val :: string() | number()}]) -> term().
 request(Pid, Method, Path, Params) ->
     gen_server:call(Pid, {Method, Path, Params}).
 
@@ -64,6 +65,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 % P = erlang:list_to_pid("<0.617.0>").
 % esupa_http_handler:request(P, get, "teams?select=*", []).
+-spec get(string(), [{Key :: string(), Val :: string() | number()}], map()) -> binary().
 get(Path, Params, #{http_conf := {Url, Key}}) ->
     {ok, {{_, 200, _}, _Headers, Body}} = httpc:request(
         get,
