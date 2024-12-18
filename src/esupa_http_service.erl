@@ -2,7 +2,7 @@
 
 -behaviour(gen_server).
 
--include("common.hrl").
+-include("include/common.hrl").
 -include_lib("kernel/include/logger.hrl").
 
 -define(DEFAULT_HTTP_PROFILE, one_long_live_conn_per_process).
@@ -23,7 +23,7 @@ start_link(Config) ->
 
 init(State) ->
     process_flag(trap_exit, true),
-    HHTId = ets:new(?HH_TAB, [public, set]),
+    HHTId = ets:new(?HH_TAB, [public, set, named_table]),
 
     ?LOG_DEBUG("Http Service INIT State ~p", [State]),
 
