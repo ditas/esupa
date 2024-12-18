@@ -2,7 +2,7 @@
 
 -behaviour(gen_server).
 
--include("common.hrl").
+-include("include/common.hrl").
 -include_lib("kernel/include/logger.hrl").
 
 -define(DEFAULT_PORT, 443).
@@ -38,15 +38,14 @@ init([WSConf, ReceiverPid, Request]) ->
         request => Request
     }}.
 
-handle_call(Msg, From, State) ->
+handle_call(_Msg, _From, State) ->
     {reply, ok, State}.
 
-handle_cast(Msg, State) ->
+handle_cast(_Msg, State) ->
     {noreply, State}.      
 
 % esupa_websocket_service:subscribe(self(),{"public","matches","update","id=eq.134"},1).
 % recon_trace:calls({esupa_websocket_handler,'handle_info', fun(_) -> return_trace() end},100).
-
 handle_info(ready, State) ->
     self() ! init_ws,
     {noreply, State};
@@ -91,9 +90,9 @@ handle_info({gun_upgrade, ConnPid, StreamRef, [<<"websocket">>], _Headers}, #{
     {noreply, common:update_map([{ref, RefBin}, {timer_count, 0}], State)};
 handle_info({gun_ws, ConnPid, StreamRef, {text, JSON}}, #{stream_ref := StreamRef, conn_pid := ConnPid, receiver := ReceiverPid, timer_count := TimerCount} = State) ->
     
-    ?LOG_EMERGENCY("------------------------------jsx:decode(JSON) ~p", [jsx:decode(JSON)]),
+    ?LOG_DEBUG("jsx:decode(JSON) ~p", [jsx:decode(JSON)]),
     
-    case jsx:decode(JSON) of
+    _ = case jsx:decode(JSON) of
         #{<<"event">> := Event} when Event =:= <<"phx_reply">> andalso TimerCount =:= 0 -> 
             erlang:send_after(?DEFAULT_HB_TIMEOUT, self(), heartbeat);
         Data ->
@@ -102,21 +101,21 @@ handle_info({gun_ws, ConnPid, StreamRef, {text, JSON}}, #{stream_ref := StreamRe
     {noreply, maps:put(timer_count, TimerCount + 1, State)};
 handle_info(heartbeat, #{conn_pid := ConnPid, stream_ref := StreamRef} = State) ->
 
-    ?LOG_ALERT("HB ~p", [State]),
+    ?LOG_DEBUG("HB ~p", [State]),
 
     RefBin = common:to_binary(erlang:monotonic_time()),
 
-    ?LOG_ALERT("HB RefBin ~p", [RefBin]),
+    ?LOG_DEBUG("HB RefBin ~p", [RefBin]),
 
     BaseHBMessage = ?HEARTBEAT_BASE,
 
-    ?LOG_ALERT("HB BaseHBMessage ~p", [BaseHBMessage]),
+    ?LOG_DEBUG("HB BaseHBMessage ~p", [BaseHBMessage]),
 
     ok = gun:ws_send(ConnPid, StreamRef, {text, jsx:encode(maps:put(ref, RefBin, BaseHBMessage))}),
     _TRef = erlang:send_after(?DEFAULT_HB_TIMEOUT, self(), heartbeat),
     {noreply, State};
-handle_info(Msg, State) ->
-    ?LOG_ERROR("Unhandled message ~p", [Msg]),
+handle_info(_Msg, State) ->
+    ?LOG_INFO("~p", [_Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -125,8 +124,10 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+-spec handle_incoming(pid(), term()) -> ok.
 handle_incoming(ReceiverPid, Data) ->
     ?LOG_DEBUG("~p", [Data]),
-    ReceiverPid ! Data.
+    ReceiverPid ! Data,
+    ok.
 
 

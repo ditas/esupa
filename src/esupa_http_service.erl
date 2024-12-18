@@ -37,7 +37,7 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info(init, #{pool_size := PoolSize, tid := HHTId, http_config := {Url, Key, HttpcOptions}} = State) ->
-    httpc:set_options(HttpcOptions, ?DEFAULT_HTTP_PROFILE),
+    ok = httpc:set_options(HttpcOptions, ?DEFAULT_HTTP_PROFILE),
     ok = lists:foreach(
         fun(_I) ->
             {ok, _Pid} = esupa_http_handler:start_link(HHTId, {Url, Key}),
