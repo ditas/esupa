@@ -7,7 +7,7 @@
 
 -behaviour(application).
 
--include("common.hrl").
+-include("include/common.hrl").
 -include_lib("kernel/include/logger.hrl").
 
 -export([start/2, stop/1]).
@@ -22,10 +22,11 @@ start(_StartType, _StartArgs) ->
 stop(_State) ->
     ok.
 
+-spec get_client() -> {ok, pid()} | {error, nonempty_string()}.
 get_client() ->
     get_client(http).
 
--spec get_client(Type :: http) -> pid().
+-spec get_client(Type :: http) -> {ok, pid()} | {error, nonempty_string()}.
 get_client(Type) ->
     Tab = type_to_tab(Type),
     case ets:first(Tab) of
