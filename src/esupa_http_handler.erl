@@ -64,16 +64,17 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 % P = erlang:list_to_pid("<0.617.0>").
-% esupa_http_handler:request(P, get, "teams?select=*", []).
+% esupa_http_handler:request(P, get, "matches?select=*", []).
+% esupa_http_handler:request(P, get, "matches?select=*&id=in.(75)", []).
 -spec get(string(), [{Key :: string(), Val :: string() | number()}], map()) -> binary().
 get(Path, Params, #{http_conf := {Url, Key}}) ->
     {ok, {{_, 200, _}, _Headers, Body}} = httpc:request(
         get,
-        {?SCHEME ++ Url ++ Path, [{"Authorization", "Bearer " ++ Key}, {"apikey", Key}]},
+        {?SCHEME ++ Url ++ Path, [{"Authorization", "Bearer " ++ Key}, {"apikey", Key}, {"Content-Type", "application/json"}, {"Accept", "application/json"}]},
         [],
         Params
     ),
-    ?LOG_DEBUG("~s", [Body]),
-    Body.
+    BodyBin = erlang:list_to_binary(Body),
+    jsx:decode(BodyBin, [{return_maps, true}]).
 
 %% internal functions
