@@ -3,6 +3,19 @@
 -behaviour(gen_server).
 
 -define(SCHEME, "https://").
+-define(SELECT, "select=").
+-define(DEFAULT_OP, "eq").
+-define(DEFAULT_HTTP_OPTIONS, []).
+
+-type supabase_select_api_params() :: #{
+    type => Type :: all | all_range | ref_table,
+    columns => Columns :: [atom()],
+    conditions => Conditions :: [{atom(), term()} | {Key :: atom(), Op :: atom(), Val :: term()}]
+}.
+
+-type supabase_insert_update_api_params() :: #{
+    % TODO
+}.
 
 % API
 -export([start_link/2]).
@@ -26,9 +39,21 @@
 start_link(TId, HttpConf) ->
     gen_server:start_link(?MODULE, [TId, HttpConf], []).
 
--spec request(pid(), Method :: get | post | update | delete, string(), [
-    {Key :: string(), Val :: string() | number()}
-]) -> term().
+%%--------------------------------------------------------------------
+%% @doc
+%% Request supports standard Supabase API
+%%
+%% Currently, only 'eq' is supported
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec request(
+    pid(),
+    Method :: get | post | update | delete,
+    string(),
+    Params :: supabase_select_api_params() | supabase_insert_update_api_params()
+) ->
+    term().
 request(Pid, Method, Path, Params) ->
     gen_server:call(Pid, {Method, Path, Params}).
 
@@ -94,3 +119,36 @@ get(Path, Params, #{http_conf := {Url, Key}}) ->
     end.
 
 %% internal functions
+
+build_path(Path, #{type := all, conditions := Conditions, columns := Columns0} = _Params) ->
+    Filters = prepare_filters(Conditions),
+    ?LOG_DEBUG("~p", [Filters]),
+    Columns = prepare_columns(Columns0),
+    ?LOG_DEBUG("~p", [Columns]),
+    Path ++ Filters ++ ?SELECT ++ Columns.
+
+prepare_filters(Conditions) ->
+    lists:foldl(
+        fun
+            ({Key, Value}, Acc) ->
+                Acc ++ common:to_list(Key) ++ "=" ++ ?DEFAULT_OP ++ "." ++ common:to_list(Value) ++
+                    "&";
+            %% TODO: check all Operators urls
+            ({Key, Operator, Value}, Acc) ->
+                Acc ++ common:to_list(Key) ++ "=" ++ common:to_list(Operator) ++ "." ++
+                    common:to_list(Value) ++ "&"
+        end,
+        "?",
+        Conditions
+    ).
+
+prepare_columns(Columns0) ->
+    {Columns, _} = lists:foldl(
+        fun
+            (Column, {Acc, N}) when N =:= 0 -> {Acc ++ common:to_list(Column), N + 1};
+            (Column, {Acc, N}) -> {Acc ++ "," ++ common:to_list(Column), N + 1}
+        end,
+        {"", 0},
+        Columns0
+    ),
+    Columns.

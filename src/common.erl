@@ -13,7 +13,7 @@
 -export([
     update_map/2,
     to_binary/1,
-    log/5,
+    log/5
     to_list/1
 ]).
 
