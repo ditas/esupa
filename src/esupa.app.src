@@ -16,9 +16,7 @@
         jsx
     ]},
     {env, []},
-    {modules, [
-
-    ]},
+    {modules, []},
     {licenses, ["Apache-2.0"]},
     {links, []}
- ]}.
+]}.
