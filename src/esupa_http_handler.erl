@@ -66,7 +66,8 @@ code_change(_OldVsn, State, _Extra) ->
 % P = erlang:list_to_pid("<0.617.0>").
 % esupa_http_handler:request(P, get, "matches?select=*", []).
 % esupa_http_handler:request(P, get, "matches?select=*&id=in.(75)", []).
--spec get(string(), [{Key :: string(), Val :: string() | number()}], map()) -> {ok, binary() | string()} | {error, string()} .
+-spec get(string(), [{Key :: string(), Val :: string() | number()}], map()) ->
+    {ok, binary() | string()} | {error, string()}.
 get(Path, Params, #{http_conf := {Url, Key}}) ->
     case
         httpc:request(

@@ -41,7 +41,11 @@ init([]) ->
                     common:update_map(
                         [
                             {pool_size, HttpPoolSize},
-                            {http_config, {BaseUrl ++ RestUrl, Key, HttpcOptions}}
+                            {http_config, {
+                                common:to_list(BaseUrl) ++ common:to_list(RestUrl),
+                                common:to_list(Key),
+                                HttpcOptions
+                            }}
                         ],
                         #{}
                     )
@@ -57,7 +61,12 @@ init([]) ->
                     common:update_map(
                         [
                             {available_pool_size, MaxWSPoolSize},
-                            {ws_config, {BaseUrl, WSUrl, Key, HttpcOptions}}
+                            {ws_config, {
+                                common:to_list(BaseUrl),
+                                common:to_list(WSUrl),
+                                common:to_list(Key),
+                                HttpcOptions
+                            }}
                         ],
                         #{}
                     )
