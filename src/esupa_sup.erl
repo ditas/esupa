@@ -24,7 +24,7 @@ init([]) ->
 
     {ok, MaxWSPoolSize} = application:get_env(?APP, max_ws_handler_pool_size),
     {ok, WSUrl} = application:get_env(?APP, ws_url),
-    
+
     {ok, HttpPoolSize} = application:get_env(?APP, http_handler_pool_size),
     {ok, RestUrl} = application:get_env(?APP, rest_url),
 
@@ -36,24 +36,32 @@ init([]) ->
     ChildSpecs = [
         #{
             id => http_pool_service,
-            start => {esupa_http_service, start_link, [
-                common:update_map([
-                    {pool_size, HttpPoolSize},
-                    {http_config, {BaseUrl ++ RestUrl, Key, HttpcOptions}}
-                ], #{})
-            ]},
+            start =>
+                {esupa_http_service, start_link, [
+                    common:update_map(
+                        [
+                            {pool_size, HttpPoolSize},
+                            {http_config, {BaseUrl ++ RestUrl, Key, HttpcOptions}}
+                        ],
+                        #{}
+                    )
+                ]},
             modules => [esupa_http_service],
             restart => permanent,
             type => worker
         },
         #{
             id => websocket_pool_service,
-            start => {esupa_websocket_service, start_link, [
-                common:update_map([
-                    {available_pool_size, MaxWSPoolSize},
-                    {ws_config, {BaseUrl, WSUrl, Key, HttpcOptions}}
-                ], #{})
-            ]},
+            start =>
+                {esupa_websocket_service, start_link, [
+                    common:update_map(
+                        [
+                            {available_pool_size, MaxWSPoolSize},
+                            {ws_config, {BaseUrl, WSUrl, Key, HttpcOptions}}
+                        ],
+                        #{}
+                    )
+                ]},
             modules => [esupa_websocket_service],
             restart => permanent,
             type => worker
