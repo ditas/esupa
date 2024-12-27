@@ -1,6 +1,6 @@
 {application, esupa, [
     {description, "Basic Supabase http/websocket tool"},
-    {vsn, "0.1.2"},
+    {vsn, "0.2.0"},
     {registered, []},
     {mod, {esupa_app, []}},
     {applications, [
@@ -16,9 +16,7 @@
         jsx
     ]},
     {env, []},
-    {modules, [
-
-    ]},
+    {modules, []},
     {licenses, ["Apache-2.0"]},
     {links, []}
- ]}.
+]}.

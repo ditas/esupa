@@ -3,7 +3,6 @@
 -behaviour(gen_server).
 
 -include("include/common.hrl").
--include_lib("kernel/include/logger.hrl").
 
 -define(DEFAULT_PORT, 443).
 -define(DEFAULT_HB_TIMEOUT, 30000).
@@ -20,12 +19,14 @@
 ]).
 
 %% gen_server callbacks
--export([init/1,
+-export([
+    init/1,
     handle_call/3,
     handle_cast/2,
     handle_info/2,
     terminate/2,
-    code_change/3]).
+    code_change/3
+]).
 
 start_link(WSConf, ReceiverPid, Request) ->
     gen_server:start_link(?MODULE, [WSConf, ReceiverPid, Request], []).
@@ -42,7 +43,7 @@ handle_call(_Msg, _From, State) ->
     {reply, ok, State}.
 
 handle_cast(_Msg, State) ->
-    {noreply, State}.      
+    {noreply, State}.
 
 % esupa_websocket_service:subscribe(self(),{"public","matches","update","id=eq.134"},1).
 % recon_trace:calls({esupa_websocket_handler,'handle_info', fun(_) -> return_trace() end},100).
@@ -62,10 +63,13 @@ handle_info(init_ws, #{ws_conf := {BaseUrl, WSUrl, Key, _HttpOptions}} = State) 
     {ok, _Protocol} = gun:await_up(ConnPid),
     StreamRef = gun:ws_upgrade(ConnPid, WSUrl ++ "?apikey=" ++ Key, []),
     {noreply, common:update_map([{conn_pid, ConnPid}, {stream_ref, StreamRef}], State)};
-handle_info({gun_upgrade, ConnPid, StreamRef, [<<"websocket">>], _Headers}, #{
+handle_info(
+    {gun_upgrade, ConnPid, StreamRef, [<<"websocket">>], _Headers},
+    #{
         request := {Schema, Table, Event, Filter},
         stream_ref := StreamRef
-    } = State) ->
+    } = State
+) ->
     SchemaBin = common:to_binary(Schema),
     TableBin = common:to_binary(Table),
     RefBin = common:to_binary(erlang:monotonic_time()),
@@ -88,34 +92,31 @@ handle_info({gun_upgrade, ConnPid, StreamRef, [<<"websocket">>], _Headers}, #{
     },
     ok = gun:ws_send(ConnPid, StreamRef, {text, jsx:encode(ChannelMsg)}),
     {noreply, common:update_map([{ref, RefBin}, {timer_count, 0}], State)};
-handle_info({gun_ws, ConnPid, StreamRef, {text, JSON}}, #{stream_ref := StreamRef, conn_pid := ConnPid, receiver := ReceiverPid, timer_count := TimerCount} = State) ->
-    
-    ?LOG_DEBUG("jsx:decode(JSON) ~p", [jsx:decode(JSON)]),
-    
-    _ = case jsx:decode(JSON) of
-        #{<<"event">> := Event} when Event =:= <<"phx_reply">> andalso TimerCount =:= 0 -> 
-            erlang:send_after(?DEFAULT_HB_TIMEOUT, self(), heartbeat);
-        Data ->
-            handle_incoming(ReceiverPid, Data)
-    end,
+handle_info(
+    {gun_ws, ConnPid, StreamRef, {text, JSON}},
+    #{
+        stream_ref := StreamRef,
+        conn_pid := ConnPid,
+        receiver := ReceiverPid,
+        timer_count := TimerCount
+    } = State
+) ->
+    _ =
+        case jsx:decode(JSON) of
+            #{<<"event">> := Event} when Event =:= <<"phx_reply">> andalso TimerCount =:= 0 ->
+                erlang:send_after(?DEFAULT_HB_TIMEOUT, self(), heartbeat);
+            Data ->
+                handle_incoming(ReceiverPid, Data)
+        end,
     {noreply, maps:put(timer_count, TimerCount + 1, State)};
 handle_info(heartbeat, #{conn_pid := ConnPid, stream_ref := StreamRef} = State) ->
-
-    ?LOG_DEBUG("HB ~p", [State]),
-
     RefBin = common:to_binary(erlang:monotonic_time()),
-
-    ?LOG_DEBUG("HB RefBin ~p", [RefBin]),
-
     BaseHBMessage = ?HEARTBEAT_BASE,
-
-    ?LOG_DEBUG("HB BaseHBMessage ~p", [BaseHBMessage]),
-
     ok = gun:ws_send(ConnPid, StreamRef, {text, jsx:encode(maps:put(ref, RefBin, BaseHBMessage))}),
     _TRef = erlang:send_after(?DEFAULT_HB_TIMEOUT, self(), heartbeat),
     {noreply, State};
-handle_info(_Msg, State) ->
-    ?LOG_INFO("~p", [_Msg]),
+handle_info(Msg, State) ->
+    common:log(warning, proc, websocker_handler, ok, Msg),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -126,8 +127,5 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec handle_incoming(pid(), term()) -> ok.
 handle_incoming(ReceiverPid, Data) ->
-    ?LOG_DEBUG("~p", [Data]),
     ReceiverPid ! Data,
     ok.
-
-

@@ -8,7 +8,6 @@
 -behaviour(application).
 
 -include("include/common.hrl").
--include_lib("kernel/include/logger.hrl").
 
 -export([start/2, stop/1]).
 -export([
@@ -31,7 +30,7 @@ get_client(Type) ->
     Tab = type_to_tab(Type),
     case ets:first(Tab) of
         '$end_of_table' ->
-            ?LOG_ERROR("END OF TABLE ~p", [Tab]),
+            common:log(error, app, ?MODULE, error, '$end_of_table'),
             {error, "no_free_" ++ atom_to_list(Type) ++ "_clients"};
         Pid ->
             {ok, Pid}
