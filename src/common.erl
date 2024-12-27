@@ -13,7 +13,7 @@
 -export([
     update_map/2,
     to_binary/1,
-    log/5
+    log/5,
     to_list/1
 ]).
 
@@ -33,6 +33,13 @@ to_binary(Var) when is_atom(Var) -> atom_to_binary(Var);
 to_binary(Var) when is_integer(Var) -> integer_to_binary(Var);
 to_binary(Var) when is_float(Var) -> float_to_binary(Var);
 to_binary(Var) when is_binary(Var) -> Var.
+
+-spec to_list(Var :: string() | binary() | float() | integer() | atom()) -> string().
+to_list(Var) when is_list(Var) -> Var;
+to_list(Var) when is_binary(Var) -> binary_to_list(Var);
+to_list(Var) when is_float(Var) -> float_to_list(Var);
+to_list(Var) when is_integer(Var) -> integer_to_list(Var);
+to_list(Var) when is_atom(Var) -> atom_to_list(Var).
 
 -spec log(
     debug | error | warning,

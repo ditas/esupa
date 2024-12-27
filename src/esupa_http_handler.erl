@@ -91,9 +91,10 @@ code_change(_OldVsn, State, _Extra) ->
 % P = erlang:list_to_pid("<0.617.0>").
 % esupa_http_handler:request(P, get, "matches?select=*", []).
 % esupa_http_handler:request(P, get, "matches?select=*&id=in.(75)", []).
--spec get(string(), [{Key :: string(), Val :: string() | number()}], map()) ->
+-spec get(string(), supabase_select_api_params(), map()) ->
     {ok, binary() | string()} | {error, string()}.
-get(Path, Params, #{http_conf := {Url, Key}}) ->
+get(Path0, Params, #{http_conf := {Url, Key}}) ->
+    Path = build_path(Path0, Params),
     case
         httpc:request(
             get,
@@ -104,7 +105,7 @@ get(Path, Params, #{http_conf := {Url, Key}}) ->
                 {"Accept", "application/json"}
             ]},
             [],
-            Params
+            []
         )
     of
         {ok, {{_, 200, _}, _Headers, Body}} ->
@@ -115,6 +116,8 @@ get(Path, Params, #{http_conf := {Url, Key}}) ->
             {error, "bad request"};
         {error, Reason} ->
             common:log(error, proc, http_handler, ok, Reason),
+            {error, "internal error"};
+        _ ->
             {error, "internal error"}
     end.
 
@@ -122,9 +125,9 @@ get(Path, Params, #{http_conf := {Url, Key}}) ->
 
 build_path(Path, #{type := all, conditions := Conditions, columns := Columns0} = _Params) ->
     Filters = prepare_filters(Conditions),
-    ?LOG_DEBUG("~p", [Filters]),
+    common:log(debug, proc, http_handler, ok, Filters),
     Columns = prepare_columns(Columns0),
-    ?LOG_DEBUG("~p", [Columns]),
+    common:log(debug, proc, http_handler, ok, Columns),
     Path ++ Filters ++ ?SELECT ++ Columns.
 
 prepare_filters(Conditions) ->
