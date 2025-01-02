@@ -55,13 +55,6 @@ log(error, Type, Source, Result, Reason) ->
 log(warning, Type, Source, Result, Reason) ->
     ?LOG_WARNING(?LOG_MAP(Type, Source, Result, Reason)).
 
--spec to_list(Var :: string() | binary() | float() | integer() | atom()) -> string().
-to_list(Var) when is_list(Var) -> Var;
-to_list(Var) when is_binary(Var) -> binary_to_list(Var);
-to_list(Var) when is_float(Var) -> float_to_list(Var);
-to_list(Var) when is_integer(Var) -> integer_to_list(Var);
-to_list(Var) when is_atom(Var) -> atom_to_list(Var).
-
 %% internal functions
 
 log_id() ->
