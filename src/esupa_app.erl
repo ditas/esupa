@@ -7,34 +7,10 @@
 
 -behaviour(application).
 
--include("include/common.hrl").
-
 -export([start/2, stop/1]).
--export([
-    get_client/0,
-    get_client/1
-]).
 
 start(_StartType, _StartArgs) ->
     esupa_sup:start_link().
 
 stop(_State) ->
     ok.
-
--spec get_client() -> {ok, pid()} | {error, nonempty_string()}.
-get_client() ->
-    get_client(http).
-
--spec get_client(Type :: http) -> {ok, pid()} | {error, nonempty_string()}.
-get_client(Type) ->
-    Tab = type_to_tab(Type),
-    case ets:first(Tab) of
-        '$end_of_table' ->
-            common:log(error, app, ?MODULE, error, '$end_of_table'),
-            {error, "no_free_" ++ atom_to_list(Type) ++ "_clients"};
-        Pid ->
-            {ok, Pid}
-    end.
-
-%% internal functions
-type_to_tab(http) -> ?HH_TAB.
