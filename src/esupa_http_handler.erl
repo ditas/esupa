@@ -7,10 +7,13 @@
 % API
 -export([start_link/2]).
 -export([
-    request/4
+    request/5
 ]).
 -export([
-    get/3
+    get/4,
+    post/4,
+    patch/4,
+    delete/4
 ]).
 
 %% gen_server callbacks
@@ -30,19 +33,20 @@ start_link(TId, HttpConf) ->
 %% @doc
 %% Request supports standard Supabase API
 %%
-%% Currently, only 'eq' is supported
+%%
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec request(
     pid(),
-    Method :: get | post | update | delete,
+    Method :: get | post | patch | delete,
     string(),
-    Headers :: [{string(), string()}]
+    Headers :: [{string(), string()}],
+    Body :: jsx:json_text() | undefined
 ) ->
     term().
-request(Pid, Method, Path, Headers) ->
-    gen_server:call(Pid, {Method, Path, Headers}).
+request(Pid, Method, Path, Headers, Body) ->
+    gen_server:call(Pid, {Method, Path, Headers, Body}).
 
 init([TId, HttpConf]) ->
     self() ! ready,
@@ -51,9 +55,9 @@ init([TId, HttpConf]) ->
         http_conf => HttpConf
     }}.
 
-handle_call({Method, Path, Headers}, _From, #{hh_tid := TId} = State) ->
+handle_call({Method, Path, Headers, Body}, _From, #{hh_tid := TId} = State) ->
     true = ets:delete(TId, self()),
-    Response = apply(?MODULE, Method, [Path, Headers, State]),
+    Response = apply(?MODULE, Method, [Path, Headers, Body, State]),
     self() ! ready,
     {reply, Response, State};
 handle_call(_Request, _From, State) ->
@@ -75,10 +79,24 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-get(Path, Headers, #{http_conf := {Url, Key}}) ->
+get(Path, Headers, Body, #{http_conf := {Url, Key}}) ->
+    do_request(get, Path, Headers, Url, Key, Body).
+
+post(Path, Headers, Body, #{http_conf := {Url, Key}}) ->
+    do_request(post, Path, Headers, Url, Key, Body).
+
+patch(Path, Headers, Body, #{http_conf := {Url, Key}}) ->
+    do_request(patch, Path, Headers, Url, Key, Body).
+
+delete(Path, Headers, Body, #{http_conf := {Url, Key}}) ->
+    do_request(delete, Path, Headers, Url, Key, Body).
+
+%% internal functions
+
+do_request(Method, Path, Headers, Url, Key, ReqBody) ->
     case
         httpc:request(
-            get,
+            Method,
             {
                 ?SCHEME ++ Url ++ Path,
                 [
@@ -89,11 +107,11 @@ get(Path, Headers, #{http_conf := {Url, Key}}) ->
                 ] ++ Headers
             },
             [],
-            []
+            prepare_body(ReqBody)
         )
     of
-        {ok, {{_, 200, _}, _Headers, Body}} ->
-            {ok, jsx:decode(erlang:list_to_binary(Body), [{return_maps, true}])};
+        {ok, {{_, 200, _}, _Headers, RespBody}} ->
+            {ok, jsx:decode(erlang:list_to_binary(RespBody), [{return_maps, true}])};
         {ok, {{_, 404, _}, _Headers, _}} ->
             {error, "not found"};
         {ok, {{_, 400, _}, _Headers, _}} ->
@@ -105,4 +123,5 @@ get(Path, Headers, #{http_conf := {Url, Key}}) ->
             {error, "internal error"}
     end.
 
-%% internal functions
+prepare_body(undefined) -> [];
+prepare_body(Body) when is_binary(Body) -> Body.
