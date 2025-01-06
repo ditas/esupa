@@ -7,17 +7,18 @@
 ]).
 
 -export([
-    from/2,
-    select/2,
-    eq/3,
-    % neq/3,
-    gt/3,
-    gte/3,
-    lt/3,
-    lte/3,
-    in/3,
-    range/3,
-    order/3,
+    supa_from/2,
+    supa_select/2,
+    supa_eq/3,
+    % supa_neq/3,
+    supa_gt/3,
+    supa_gte/3,
+    supa_lt/3,
+    supa_lte/3,
+    supa_in/3,
+    supa_range/3,
+    supa_order/3,
+    supa_or/2,
 
     request/2,
     execute/1
@@ -53,14 +54,14 @@ request(Client, Method) ->
 execute({Client, Method, Req, Headers}) ->
     esupa_http_handler:request(Client, Method, Req, Headers).
 
--spec from(request_tuple(), string()) -> request_tuple().
-from({Client, Method, Req0, Headers}, Table) ->
+-spec supa_from(request_tuple(), string()) -> request_tuple().
+supa_from({Client, Method, Req0, Headers}, Table) ->
     {Client, Method, Req0 ++ common:to_list(Table), Headers}.
 
--spec select(request_tuple(), [string()]) -> request_tuple().
-select({Client, Method, Req0, Headers}, []) ->
+-spec supa_select(request_tuple(), [string()]) -> request_tuple().
+supa_select({Client, Method, Req0, Headers}, []) ->
     {Client, Method, Req0 ++ "?select=" ++ "*", Headers};
-select({Client, Method, Req0, Headers}, Columns0) ->
+supa_select({Client, Method, Req0, Headers}, Columns0) ->
     {Req, _} = lists:foldl(
         fun
             (Column, {Acc, N}) when N =:= 0 -> {Acc ++ common:to_list(Column), N + 1};
@@ -71,53 +72,60 @@ select({Client, Method, Req0, Headers}, Columns0) ->
     ),
     {Client, Method, Req, Headers}.
 
--spec range(request_tuple(), integer(), integer()) -> request_tuple().
-range({Client, Method, Req0, Headers}, Min, Max) ->
+-spec supa_range(request_tuple(), integer(), integer()) -> request_tuple().
+supa_range({Client, Method, Req0, Headers}, Min, Max) ->
     {Client, Method, Req0,
         Headers ++ [{"Range", common:to_list(Min) ++ "-" ++ common:to_list(Max)}]}.
 
--spec order(request_tuple(), string(), asc | desc) -> request_tuple().
-order({Client, Method, Req0, Headers}, Column, Order) ->
+-spec supa_order(request_tuple(), string(), asc | desc) -> request_tuple().
+supa_order({Client, Method, Req0, Headers}, Column, Order) ->
     {Client, Method,
         Req0 ++ "&" ++ "order" ++ "=" ++ common:to_list(Column) ++ "." ++ common:to_list(Order),
         Headers}.
 
--spec eq(request_tuple(), string(), term()) -> request_tuple().
-eq({Client, Method, Req0, Headers}, Column, Value) ->
+-spec supa_eq(request_tuple(), string(), term()) -> request_tuple().
+supa_eq({Client, Method, Req0, Headers}, Column, Value) ->
     {Client, Method, Req0 ++ "&" ++ common:to_list(Column) ++ "=" ++ "eq." ++ common:to_list(Value),
         Headers}.
 
-% -spec neq(request_tuple(), string(), term()) -> request_tuple().
-% neq({Client, Method, Req0, Headers}, Column, Value) ->
+% -spec supa_neq(request_tuple(), string(), term()) -> request_tuple().
+% supa_neq({Client, Method, Req0, Headers}, Column, Value) ->
 %     {Client, Method,
 %         Req0 ++ "&" ++ common:to_list(Column) ++ "=" ++ "not.is." ++ common:to_list(Value),
 %         Headers}.
 
--spec gt(request_tuple(), string(), term()) -> request_tuple().
-gt({Client, Method, Req0, Headers}, Column, Value) ->
+-spec supa_gt(request_tuple(), string(), term()) -> request_tuple().
+supa_gt({Client, Method, Req0, Headers}, Column, Value) ->
     {Client, Method, Req0 ++ "&" ++ common:to_list(Column) ++ "=" ++ "gt." ++ common:to_list(Value),
         Headers}.
 
--spec gte(request_tuple(), string(), term()) -> request_tuple().
-gte({Client, Method, Req0, Headers}, Column, Value) ->
+-spec supa_gte(request_tuple(), string(), term()) -> request_tuple().
+supa_gte({Client, Method, Req0, Headers}, Column, Value) ->
     {Client, Method,
         Req0 ++ "&" ++ common:to_list(Column) ++ "=" ++ "gte." ++ common:to_list(Value), Headers}.
 
--spec lt(request_tuple(), string(), term()) -> request_tuple().
-lt({Client, Method, Req0, Headers}, Column, Value) ->
+-spec supa_lt(request_tuple(), string(), term()) -> request_tuple().
+supa_lt({Client, Method, Req0, Headers}, Column, Value) ->
     {Client, Method, Req0 ++ "&" ++ common:to_list(Column) ++ "=" ++ "lt." ++ common:to_list(Value),
         Headers}.
 
--spec lte(request_tuple(), string(), term()) -> request_tuple().
-lte({Client, Method, Req0, Headers}, Column, Value) ->
+-spec supa_lte(request_tuple(), string(), term()) -> request_tuple().
+supa_lte({Client, Method, Req0, Headers}, Column, Value) ->
     {Client, Method,
         Req0 ++ "&" ++ common:to_list(Column) ++ "=" ++ "lte." ++ common:to_list(Value), Headers}.
 
--spec in(request_tuple(), string(), [term()]) -> request_tuple().
-in({Client, Method, Req0, Headers}, Column, Values) ->
+-spec supa_in(request_tuple(), string(), [term()]) -> request_tuple().
+supa_in({Client, Method, Req0, Headers}, Column, Values) ->
     {Client, Method,
         Req0 ++ "&" ++ common:to_list(Column) ++ "=" ++ "in.(" ++
             prepare_comma_separated_list(Values) ++ ")",
+        Headers}.
+
+-spec supa_or(request_tuple(), [{string(), string(), term()}]) -> request_tuple().
+supa_or({Client, Method, Req0, Headers}, ColumnsOperatorsValues) ->
+    {Client, Method,
+        Req0 ++ "&" ++ "or" ++ "=" ++ "(" ++
+            prepare_comma_separated_list(ColumnsOperatorsValues) ++ ")",
         Headers}.
 
 %% internal functions
@@ -126,10 +134,17 @@ type_to_tab(http) -> ?HH_TAB.
 prepare_comma_separated_list(List) ->
     {Res, _} = lists:foldl(
         fun
-            (El, {Acc, N}) when N =:= 0 -> {Acc ++ common:to_list(El), N + 1};
-            (El, {Acc, N}) -> {Acc ++ "," ++ common:to_list(El), N + 1}
+            (El, {Acc, N}) when N =:= 0 ->
+                {Acc ++ prepare_element(El), N + 1};
+            (El, {Acc, N}) ->
+                {Acc ++ "," ++ prepare_element(El), N + 1}
         end,
         {"", 0},
         List
     ),
     Res.
+
+prepare_element({Col, Op, Val}) ->
+    common:to_list(Col) ++ "." ++ common:to_list(Op) ++ "." ++ common:to_list(Val);
+prepare_element(El) ->
+    common:to_list(El).
