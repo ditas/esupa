@@ -26,11 +26,23 @@
 start_link(TId, HttpConf) ->
     gen_server:start_link(?MODULE, [TId, HttpConf], []).
 
--spec request(pid(), Method :: get | post | update | delete, string(), [
-    {Key :: string(), Val :: string() | number()}
-]) -> term().
-request(Pid, Method, Path, Params) ->
-    gen_server:call(Pid, {Method, Path, Params}).
+%%--------------------------------------------------------------------
+%% @doc
+%% Request supports standard Supabase API
+%%
+%% Currently, only 'eq' is supported
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec request(
+    pid(),
+    Method :: get | post | update | delete,
+    string(),
+    Headers :: [{string(), string()}]
+) ->
+    term().
+request(Pid, Method, Path, Headers) ->
+    gen_server:call(Pid, {Method, Path, Headers}).
 
 init([TId, HttpConf]) ->
     self() ! ready,
@@ -39,9 +51,9 @@ init([TId, HttpConf]) ->
         http_conf => HttpConf
     }}.
 
-handle_call({Method, Path, Params}, _From, #{hh_tid := TId} = State) ->
+handle_call({Method, Path, Headers}, _From, #{hh_tid := TId} = State) ->
     true = ets:delete(TId, self()),
-    Response = apply(?MODULE, Method, [Path, Params, State]),
+    Response = apply(?MODULE, Method, [Path, Headers, State]),
     self() ! ready,
     {reply, Response, State};
 handle_call(_Request, _From, State) ->
@@ -63,23 +75,21 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-% P = erlang:list_to_pid("<0.617.0>").
-% esupa_http_handler:request(P, get, "matches?select=*", []).
-% esupa_http_handler:request(P, get, "matches?select=*&id=in.(75)", []).
--spec get(string(), [{Key :: string(), Val :: string() | number()}], map()) ->
-    {ok, binary() | string()} | {error, string()}.
-get(Path, Params, #{http_conf := {Url, Key}}) ->
+get(Path, Headers, #{http_conf := {Url, Key}}) ->
     case
         httpc:request(
             get,
-            {?SCHEME ++ Url ++ Path, [
-                {"Authorization", "Bearer " ++ Key},
-                {"apikey", Key},
-                {"Content-Type", "application/json"},
-                {"Accept", "application/json"}
-            ]},
+            {
+                ?SCHEME ++ Url ++ Path,
+                [
+                    {"Authorization", "Bearer " ++ Key},
+                    {"apikey", Key},
+                    {"Content-Type", "application/json"},
+                    {"Accept", "application/json"}
+                ] ++ Headers
+            },
             [],
-            Params
+            []
         )
     of
         {ok, {{_, 200, _}, _Headers, Body}} ->
@@ -90,6 +100,8 @@ get(Path, Params, #{http_conf := {Url, Key}}) ->
             {error, "bad request"};
         {error, Reason} ->
             common:log(error, proc, http_handler, ok, Reason),
+            {error, "internal error"};
+        _ ->
             {error, "internal error"}
     end.
 
