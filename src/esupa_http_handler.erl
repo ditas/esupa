@@ -102,12 +102,14 @@ do_request(Method, Path, Headers, Url, Key, ReqBody) ->
                 [
                     {"Authorization", "Bearer " ++ Key},
                     {"apikey", Key},
-                    {"Content-Type", "application/json"},
-                    {"Accept", "application/json"}
-                ] ++ Headers
+                    {"Content-Type", "application/json"},  %% makes sense only for requests with body
+                    {"Accept", "application/json"} %% makes sense when reponse is expected 
+                ] ++ Headers,
+                "application/json", %% makes sense only for POST with JSON body
+                prepare_body(ReqBody)
             },
-            [],
-            prepare_body(ReqBody)
+            [], %% TODO: check certificates
+            []
         )
     of
         {ok, {{_, 200, _}, _Headers, RespBody}} ->
@@ -116,6 +118,8 @@ do_request(Method, Path, Headers, Url, Key, ReqBody) ->
             {error, "not found"};
         {ok, {{_, 400, _}, _Headers, _}} ->
             {error, "bad request"};
+        {ok, {{_, 201, Res}, _Headers, _}} ->
+            {ok, Res};
         {error, Reason} ->
             common:log(error, proc, http_handler, ok, Reason),
             {error, "internal error"};
@@ -123,5 +127,5 @@ do_request(Method, Path, Headers, Url, Key, ReqBody) ->
             {error, "internal error"}
     end.
 
-prepare_body(undefined) -> [];
+prepare_body(undefined) -> "";
 prepare_body(Body) when is_binary(Body) -> Body.
