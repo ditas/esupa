@@ -13,9 +13,11 @@
     supa_update/2,
     supa_delete/1,
 
+    %% TODO:
+    % supa_upsert,
+
     %% filter methods
     supa_eq/3,
-    % supa_neq/3,
     supa_gt/3,
     supa_gte/3,
     supa_lt/3,
@@ -25,7 +27,9 @@
     supa_order/3,
     supa_or/2,
 
+    %% TODO:
     % supa_is,
+    % supa_neq,
 
     request/2,
     execute/1
@@ -92,11 +96,6 @@ supa_select({Client, Method, Req0, Headers}, Columns0) ->
 supa_insert({Client, Method, Req, Headers}, Body) ->
     {Client, Method, Req, Headers, jsx:encode(Body)}.
 
-% supa_upsert({Client, Method, Req, Headers}, Body) ->
-%     {Client, Method, Req,
-%         Headers ++ [{"Prefer", "resolution=merge-duplicates"}],
-%         jsx:encode(Body)}.
-
 supa_update({Client, Method, Req0, Headers}, Body) ->
     {Client, Method, Req0 ++ "?", Headers ++ [{"Prefer", "return=minimal"}], jsx:encode(Body)}.
 
@@ -114,19 +113,12 @@ supa_order({Client, Method, Req0, Headers}, Column, Order) ->
         Req0 ++ "&" ++ "order" ++ "=" ++ common:to_list(Column) ++ "." ++ common:to_list(Order),
         Headers}.
 
--spec supa_eq(request_tuple(), string(), term()) -> request_tuple().
-supa_eq({Client, Method, Req0, Headers}, Column, Value) ->
+-spec supa_eq(request_tuple() | request_tuple_with_body(), string(), term()) -> request_tuple() | request_tuple_with_body().
+supa_eq({Client, Method, Req0, Headers, Body}, Column, Value) ->
     {Client, Method,
         Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "eq." ++
             common:to_list(Value),
-        Headers}.
-
-% -spec supa_neq(request_tuple(), string(), term()) -> request_tuple().
-% supa_neq({Client, Method, Req0, Headers}, Column, Value) ->
-%     {Client, Method,
-%         Req0 ++ prepare_divider(Req0) ++
-%         common:to_list(Column) ++ "=" ++ "not.is." ++ common:to_list(Value),
-%         Headers}.
+        Headers, Body}.
 
 -spec supa_gt(request_tuple(), string(), term()) -> request_tuple().
 supa_gt({Client, Method, Req0, Headers}, Column, Value) ->

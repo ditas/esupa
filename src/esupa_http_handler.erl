@@ -9,12 +9,6 @@
 -export([
     request/5
 ]).
--export([
-    get/4,
-    post/4,
-    patch/4,
-    delete/4
-]).
 
 %% gen_server callbacks
 -export([
@@ -55,9 +49,9 @@ init([TId, HttpConf]) ->
         http_conf => HttpConf
     }}.
 
-handle_call({Method, Path, Headers, Body}, _From, #{hh_tid := TId} = State) ->
+handle_call({Method, Path, Headers, Body}, _From, #{hh_tid := TId, http_conf := {Url, Key}} = State) ->
     true = ets:delete(TId, self()),
-    Response = apply(?MODULE, Method, [Path, Headers, Body, State]),
+    Response = do_request(Method, Path, Headers, Url, Key, Body),
     self() ! ready,
     {reply, Response, State};
 handle_call(_Request, _From, State) ->
@@ -78,18 +72,6 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-get(Path, Headers, Body, #{http_conf := {Url, Key}}) ->
-    do_request(get, Path, Headers, Url, Key, Body).
-
-post(Path, Headers, Body, #{http_conf := {Url, Key}}) ->
-    do_request(post, Path, Headers, Url, Key, Body).
-
-patch(Path, Headers, Body, #{http_conf := {Url, Key}}) ->
-    do_request(patch, Path, Headers, Url, Key, Body).
-
-delete(Path, Headers, Body, #{http_conf := {Url, Key}}) ->
-    do_request(delete, Path, Headers, Url, Key, Body).
 
 %% internal functions
 
@@ -120,10 +102,13 @@ do_request(Method, Path, Headers, Url, Key, ReqBody) ->
             {error, "bad request"};
         {ok, {{_, 201, Res}, _Headers, _}} ->
             {ok, Res};
+        {ok, {{_, 204, Res}, _Headers, _}} ->
+            {ok, Res};
         {error, Reason} ->
             common:log(error, proc, http_handler, ok, Reason),
             {error, "internal error"};
-        _ ->
+        Any ->
+            logger:warning("--------------------Any ~p", [Any]),
             {error, "internal error"}
     end.
 
