@@ -49,7 +49,9 @@ init([TId, HttpConf]) ->
         http_conf => HttpConf
     }}.
 
-handle_call({Method, Path, Headers, Body}, _From, #{hh_tid := TId, http_conf := {Url, Key}} = State) ->
+handle_call(
+    {Method, Path, Headers, Body}, _From, #{hh_tid := TId, http_conf := {Url, Key}} = State
+) ->
     true = ets:delete(TId, self()),
     Response = do_request(Method, Path, Headers, Url, Key, Body),
     self() ! ready,
@@ -84,13 +86,17 @@ do_request(Method, Path, Headers, Url, Key, ReqBody) ->
                 [
                     {"Authorization", "Bearer " ++ Key},
                     {"apikey", Key},
-                    {"Content-Type", "application/json"},  %% makes sense only for requests with body
-                    {"Accept", "application/json"} %% makes sense when reponse is expected 
+                    %% makes sense only for requests with body
+                    {"Content-Type", "application/json"},
+                    %% makes sense when reponse is expected
+                    {"Accept", "application/json"}
                 ] ++ Headers,
-                "application/json", %% makes sense only for POST with JSON body
+                %% makes sense only for POST with JSON body
+                "application/json",
                 prepare_body(ReqBody)
             },
-            [], %% TODO: check certificates
+            %% TODO: check certificates
+            [],
             []
         )
     of
