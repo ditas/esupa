@@ -53,11 +53,7 @@ handle_info(ready, State) ->
 handle_info(init_ws, #{ws_conf := {BaseUrl, WSUrl, Key, _HttpOptions}} = State) ->
     {ok, ConnPid} = gun:open(BaseUrl, ?DEFAULT_PORT, #{
         transport => tls,
-        %% Note: default protocols are: [http2,http]
-        %% but `http2` will complicate matters here and
-        %% is not really needed for our purposes; we just
-        %% want to bring up the websocket as quickly
-        %% as possible.
+        %% Using http instead of http2 to simplify stuff (gun does not support http2 yet(?))
         protocols => [http]
     }),
     {ok, _Protocol} = gun:await_up(ConnPid),
