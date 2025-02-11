@@ -7,10 +7,7 @@
 % API
 -export([start_link/2]).
 -export([
-    request/4
-]).
--export([
-    get/3
+    request/5
 ]).
 
 %% gen_server callbacks
@@ -30,19 +27,20 @@ start_link(TId, HttpConf) ->
 %% @doc
 %% Request supports standard Supabase API
 %%
-%% Currently, only 'eq' is supported
+%%
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec request(
     pid(),
-    Method :: get | post | update | delete,
+    Method :: get | post | patch | delete,
     string(),
-    Headers :: [{string(), string()}]
+    Headers :: [{string(), string()}],
+    Body :: jsx:json_text() | undefined
 ) ->
     term().
-request(Pid, Method, Path, Headers) ->
-    gen_server:call(Pid, {Method, Path, Headers}).
+request(Pid, Method, Path, Headers, Body) ->
+    gen_server:call(Pid, {Method, Path, Headers, Body}).
 
 init([TId, HttpConf]) ->
     self() ! ready,
@@ -51,9 +49,11 @@ init([TId, HttpConf]) ->
         http_conf => HttpConf
     }}.
 
-handle_call({Method, Path, Headers}, _From, #{hh_tid := TId} = State) ->
+handle_call(
+    {Method, Path, Headers, Body}, _From, #{hh_tid := TId, http_conf := {Url, Key}} = State
+) ->
     true = ets:delete(TId, self()),
-    Response = apply(?MODULE, Method, [Path, Headers, State]),
+    Response = do_request(Method, Path, Headers, Url, Key, Body),
     self() ! ready,
     {reply, Response, State};
 handle_call(_Request, _From, State) ->
@@ -75,34 +75,48 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-get(Path, Headers, #{http_conf := {Url, Key}}) ->
+%% internal functions
+
+do_request(Method, Path, Headers, Url, Key, ReqBody) ->
     case
         httpc:request(
-            get,
+            Method,
             {
                 ?SCHEME ++ Url ++ Path,
                 [
                     {"Authorization", "Bearer " ++ Key},
                     {"apikey", Key},
+                    %% makes sense only for requests with body
                     {"Content-Type", "application/json"},
+                    %% makes sense when reponse is expected
                     {"Accept", "application/json"}
-                ] ++ Headers
+                ] ++ Headers,
+                %% makes sense only for POST with JSON body
+                "application/json",
+                prepare_body(ReqBody)
             },
+            %% TODO: check certificates
             [],
             []
         )
     of
-        {ok, {{_, 200, _}, _Headers, Body}} ->
-            {ok, jsx:decode(erlang:list_to_binary(Body), [{return_maps, true}])};
+        {ok, {{_, 200, _}, _Headers, RespBody}} ->
+            {ok, jsx:decode(erlang:list_to_binary(RespBody), [{return_maps, true}])};
         {ok, {{_, 404, _}, _Headers, _}} ->
             {error, "not found"};
         {ok, {{_, 400, _}, _Headers, _}} ->
             {error, "bad request"};
+        {ok, {{_, 201, Res}, _Headers, _}} ->
+            {ok, Res};
+        {ok, {{_, 204, Res}, _Headers, _}} ->
+            {ok, Res};
         {error, Reason} ->
             common:log(error, proc, http_handler, ok, Reason),
             {error, "internal error"};
-        _ ->
+        Any ->
+            logger:warning("--------------------Any ~p", [Any]),
             {error, "internal error"}
     end.
 
-%% internal functions
+prepare_body(undefined) -> "";
+prepare_body(Body) when is_binary(Body) -> Body.
