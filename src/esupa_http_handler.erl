@@ -7,7 +7,11 @@
 % API
 -export([start_link/2]).
 -export([
-    request/5
+    request/5,
+    get/5,
+    post/5,
+    patch/5,
+    delete/5
 ]).
 
 %% gen_server callbacks
@@ -41,6 +45,18 @@ start_link(TId, HttpConf) ->
     term().
 request(Pid, Method, Path, Headers, Body) ->
     gen_server:call(Pid, {Method, Path, Headers, Body}).
+
+get(Path, Headers, Url, Key, _ReqBody) ->
+   do_read(Path, Headers, Url, Key).
+
+post(Path, Headers, Url, Key, ReqBody) ->
+    do_write(post, Path, Headers, Url, Key, ReqBody).
+
+patch(Path, Headers, Url, Key, ReqBody) ->
+    do_write(patch, Path, Headers, Url, Key, ReqBody).
+
+delete(Path, Headers, Url, Key, _ReqBody) ->
+    do_delete(Path, Headers, Url, Key).
 
 init([TId, HttpConf]) ->
     self() ! ready,
@@ -78,28 +94,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% internal functions
 
 do_request(Method, Path, Headers, Url, Key, ReqBody) ->
-    case
-        httpc:request(
-            Method,
-            {
-                ?SCHEME ++ Url ++ Path,
-                [
-                    {"Authorization", "Bearer " ++ Key},
-                    {"apikey", Key},
-                    %% makes sense only for requests with body
-                    {"Content-Type", "application/json"},
-                    %% makes sense when reponse is expected
-                    {"Accept", "application/json"}
-                ] ++ Headers,
-                %% makes sense only for POST with JSON body
-                "application/json",
-                prepare_body(ReqBody)
-            },
-            %% TODO: check certificates
-            [],
-            []
-        )
-    of
+    case erlang:apply(?MODULE, Method, [Path, Headers, Url, Key, ReqBody]) of
         {ok, {{_, 200, _}, _Headers, RespBody}} ->
             {ok, jsx:decode(erlang:list_to_binary(RespBody), [{return_maps, true}])};
         {ok, {{_, 404, _}, _Headers, _}} ->
@@ -120,3 +115,70 @@ do_request(Method, Path, Headers, Url, Key, ReqBody) ->
 
 prepare_body(undefined) -> "";
 prepare_body(Body) when is_binary(Body) -> Body.
+
+
+define_options() ->
+    [].
+
+define_http_options() ->
+    [].
+
+do_read(Path, Headers, Url, Key) ->
+    httpc:request(
+        get,
+        {
+            ?SCHEME ++ Url ++ common:to_list(Path),
+            [
+                {"Authorization", "Bearer " ++ Key},
+                {"apikey", Key},
+                %% makes sense only for requests with body
+                {"Content-Type", "application/json"},
+                %% makes sense when reponse is expected
+                {"Accept", "application/json"}
+            ] ++ Headers
+        },
+        %% TODO: check certificates
+        define_options(),
+        define_http_options()
+    ).
+
+do_write(Method, Path, Headers, Url, Key, ReqBody) ->
+    httpc:request(
+        Method,
+        {
+            ?SCHEME ++ Url ++ common:to_list(Path),
+            [
+                {"Authorization", "Bearer " ++ Key},
+                {"apikey", Key},
+                %% makes sense only for requests with body
+                {"Content-Type", "application/json"},
+                %% makes sense when reponse is expected
+                {"Accept", "application/json"}
+            ] ++ Headers,
+            % %% makes sense only for POST with JSON body
+            "application/json",
+            prepare_body(ReqBody)
+        },
+        %% TODO: check certificates
+        define_options(),
+        define_http_options()
+    ).
+
+do_delete(Path, Headers, Url, Key) ->
+    httpc:request(
+        delete,
+        {
+            ?SCHEME ++ Url ++ common:to_list(Path),
+            [
+                {"Authorization", "Bearer " ++ Key},
+                {"apikey", Key},
+                %% makes sense only for requests with body
+                {"Content-Type", "application/json"},
+                %% makes sense when reponse is expected
+                {"Accept", "application/json"}
+            ] ++ Headers
+        },
+        %% TODO: check certificates
+        define_options(),
+        define_http_options()
+    ).
