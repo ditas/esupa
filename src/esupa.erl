@@ -37,7 +37,7 @@
 
 -type request() :: {
     Client :: pid(),
-    Method :: get | post | update | delete,
+    Method :: get | post | patch | delete,
     Req :: string(),
     Headers :: [{string(), term()}],
     Body :: jsx:json_term()
@@ -58,7 +58,7 @@ get_client(Type) ->
             {ok, Pid}
     end.
 
--spec request(Client :: pid(), Method :: get | post | update | delete) -> request().
+-spec request(Client :: pid(), Method :: get | post | patch | delete) -> request().
 request(Client, Method) ->
     {Client, Method, "", [], undefined}.
 
@@ -84,7 +84,7 @@ supa_select({Client, Method, Req0, Headers, Body}, Columns0) ->
     ),
     {Client, Method, Req, Headers, Body}.
 
-supa_insert({Client, Method, Req, Headers, Body}, Body) ->
+supa_insert({Client, Method, Req, Headers, _Body0}, Body) ->
     {Client, Method, Req, Headers, jsx:encode(Body)}.
 
 supa_update({Client, Method, Req0, Headers, undefined}, Body) ->

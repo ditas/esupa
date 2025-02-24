@@ -4,8 +4,6 @@
 
 -include("include/common.hrl").
 
--define(DEFAULT_HTTP_PROFILE, one_long_live_conn_per_process).
-
 % API
 -export([start_link/1]).
 
@@ -37,7 +35,7 @@ handle_cast(_Msg, State) ->
 handle_info(
     init, #{pool_size := PoolSize, tid := HHTId, http_config := {Url, Key, HttpcOptions}} = State
 ) ->
-    ok = httpc:set_options(HttpcOptions, ?DEFAULT_HTTP_PROFILE),
+    ok = httpc:set_options(HttpcOptions),
     ok = lists:foreach(
         fun(_I) ->
             {ok, _Pid} = esupa_http_handler:start_link(HHTId, {Url, Key})
