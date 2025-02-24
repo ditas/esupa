@@ -15,6 +15,7 @@ A1 = esupa:request(Pid, get).
 A2 = esupa:supa_from(A1, "table_name").
 A3 = esupa:supa_select(A2, ["optional", "fields", "to", "select"]).
 A4 = esupa:supa_eq(A3, "id", 123).
+esupa:execute(A4).
 ```
 
 For another schema use:
