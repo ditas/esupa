@@ -1,6 +1,6 @@
 {application, esupa, [
     {description, "Basic Supabase http/websocket tool"},
-    {vsn, "0.4.2"},
+    {vsn, "0.4.3"},
     {registered, []},
     {mod, {esupa_app, []}},
     {applications, [
