@@ -19,4 +19,4 @@ esupa:execute(A4).
 ```
 
 For another schema use:
-`A2 = esupa:supa_from(A1, "persona_page_full", "another_schema_name").`
+`A2 = esupa:supa_from(A1, "table_name", "another_schema_name").`
