@@ -32,6 +32,7 @@
     % supa_neq,
 
     request/2,
+    request/3,
     execute/1
 ]).
 
@@ -61,6 +62,10 @@ get_client(Type) ->
 -spec request(Client :: pid(), Method :: get | post | patch | delete) -> request().
 request(Client, Method) ->
     {Client, Method, "", [], undefined}.
+
+-spec request(Client :: pid(), Method :: get | post | patch | delete, Schema :: string()) -> request().
+request(Client, Method, Schema) ->
+    {Client, Method, "", [{"Accept-Profile", Schema}], undefined}.
 
 -spec execute(request()) -> term().
 execute({Client, Method, Req, Headers, Body}) ->
