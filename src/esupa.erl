@@ -8,7 +8,7 @@
 
 -export([
     supa_from/2,
-    supa_select/2,
+    supa_select/2, supa_join/2,
     supa_insert/2,
     supa_update/2,
     supa_delete/1,
@@ -78,16 +78,33 @@ supa_from({Client, Method, Req0, Headers, Body}, Table) ->
 -spec supa_select(request(), [string()]) -> request().
 supa_select({Client, Method, Req0, Headers, Body}, []) ->
     {Client, Method, Req0 ++ "?select=" ++ "*", Headers, Body};
-supa_select({Client, Method, Req0, Headers, Body}, Columns0) ->
-    {Req, _} = lists:foldl(
-        fun
-            (Column, {Acc, N}) when N =:= 0 -> {Acc ++ common:to_list(Column), N + 1};
-            (Column, {Acc, N}) -> {Acc ++ "," ++ common:to_list(Column), N + 1}
-        end,
-        {Req0 ++ "?select=", 0},
-        Columns0
-    ),
+supa_select({Client, Method, Req0, Headers, Body}, Columns) ->
+    Req = Req0 ++ "?select=" ++ prepare_comma_separated_list(Columns),
     {Client, Method, Req, Headers, Body}.
+
+supa_join({Client, Method, Req0, Headers, Body}, []) ->
+    {Client, Method, Req0, Headers, Body};
+supa_join({Client, Method, Req0, Headers, Body}, Joins) ->
+    Req = recursive_join(Joins, Req0, 0),
+    {Client, Method, Req, Headers, Body}.
+
+recursive_join([], Acc, N) ->
+    lists:foldr(fun(_, Acc1) -> Acc1 ++ ")" end, Acc, lists:seq(1, N));
+    
+recursive_join([{Table, []}|Rest], Acc, N) when N =:= 0 ->
+    recursive_join(Rest, Acc ++ "," ++ common:to_list(Table) ++ "(", N+1);
+recursive_join([{Table, []}|Rest], Acc, N) ->
+    recursive_join(Rest, Acc ++ common:to_list(Table) ++ "(", N+1);
+    
+recursive_join([{Table, Columns}], Acc, N) when N =:= 0 ->
+    recursive_join([], Acc ++ "," ++ common:to_list(Table) ++ "(" ++ prepare_comma_separated_list(Columns), N+1);
+recursive_join([{Table, Columns}], Acc, N) ->
+    recursive_join([], Acc ++ common:to_list(Table) ++ "(" ++ prepare_comma_separated_list(Columns), N+1);
+    
+recursive_join([{Table, Columns}|Rest], Acc, N) when N =:= 0 ->
+    recursive_join(Rest, Acc ++ "," ++ common:to_list(Table) ++ "(" ++ prepare_comma_separated_list(Columns) ++ ",", N+1);
+recursive_join([{Table, Columns}|Rest], Acc, N) ->
+    recursive_join(Rest, Acc ++ common:to_list(Table) ++ "(" ++ prepare_comma_separated_list(Columns) ++ ",", N+1).
 
 supa_insert({Client, Method, Req, Headers, _Body0}, Body) ->
     {Client, Method, Req, Headers, jsx:encode(Body)}.
@@ -164,6 +181,18 @@ supa_or({Client, Method, Req0, Headers, Body}, ColumnsOperatorsValues) ->
 
 %% internal functions
 type_to_tab(http) -> ?HH_TAB.
+
+
+% prepare_comma_separated_list_simple(List) ->
+%     {Res, _} = lists:foldl(
+%         fun
+%             (El, {Acc, N}) when N =:= 0 -> {Acc ++ common:to_list(El), N + 1};
+%             (El, {Acc, N}) -> {Acc ++ "," ++ common:to_list(El), N + 1}
+%         end,
+%         {"", 0},
+%         List
+%     ),
+%     Res.
 
 prepare_comma_separated_list(List) ->
     {Res, _} = lists:foldl(
