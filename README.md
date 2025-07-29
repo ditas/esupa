@@ -487,7 +487,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE.md](LIC
 
 ## Changelog
 
-### v0.4.3
+### v0.6.0
 - Current stable release
 - Full HTTP REST API support
 - WebSocket real-time subscriptions
