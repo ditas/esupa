@@ -45,7 +45,7 @@ handle_call(_Msg, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-% esupa_websocket_service:subscribe(self(),{"public","matches","update","id=eq.134"},1).
+% esupa_websocket_service:subscribe(self(),{"public","matches","update","id=eq.2"},1).
 % recon_trace:calls({esupa_websocket_handler,'handle_info', fun(_) -> return_trace() end},100).
 handle_info(ready, State) ->
     self() ! init_ws,
@@ -53,7 +53,11 @@ handle_info(ready, State) ->
 handle_info(init_ws, #{ws_conf := {BaseUrl, WSUrl, Key, _HttpOptions}} = State) ->
     {ok, ConnPid} = gun:open(BaseUrl, ?DEFAULT_PORT, #{
         transport => tls,
-        %% Using http instead of http2 to simplify stuff (gun does not support http2 yet(?))
+        tls_opts => [
+            {verify, verify_peer},
+            {cacerts, public_key:cacerts_get()},
+            {server_name_indication, "*.supabase.co"}
+        ],
         protocols => [http]
     }),
     {ok, _Protocol} = gun:await_up(ConnPid),
@@ -111,6 +115,12 @@ handle_info(heartbeat, #{conn_pid := ConnPid, stream_ref := StreamRef} = State) 
     ok = gun:ws_send(ConnPid, StreamRef, {text, jsx:encode(maps:put(ref, RefBin, BaseHBMessage))}),
     _TRef = erlang:send_after(?DEFAULT_HB_TIMEOUT, self(), heartbeat),
     {noreply, State};
+handle_info(
+    {gun_down, ConnPid, _, _, _},
+    #{conn_pid := ConnPid, receiver := ReceiverPid, request := Request} = State
+) ->
+    esupa_websocket_service:subscribe(ReceiverPid, Request, 1),
+    {stop, normal, State};
 handle_info(Msg, State) ->
     common:log(warning, proc, websocker_handler, ok, Msg),
     {noreply, State}.
@@ -122,6 +132,11 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 -spec handle_incoming(pid(), term()) -> ok.
-handle_incoming(ReceiverPid, Data) ->
-    ReceiverPid ! Data,
+handle_incoming(ReceiverPid, #{<<"event">> := <<"postgres_changes">>, <<"payload">> := Payload}) ->
+    common:log(info, proc, websocker_handler, ok, Payload),
+    io:format("Incoming Changes: ~p~n", [Payload]),
+    ReceiverPid ! Payload,
+    ok;
+handle_incoming(_ReceiverPid, Data) ->
+    common:log(debug, proc, websocker_handler, ok, Data),
     ok.
