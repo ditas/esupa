@@ -47,7 +47,7 @@ request(Pid, Method, Path, Headers, Body) ->
     gen_server:call(Pid, {Method, Path, Headers, Body}).
 
 get(Path, Headers, Url, Key, _ReqBody) ->
-   do_read(Path, Headers, Url, Key).
+    do_read(Path, Headers, Url, Key).
 
 post(Path, Headers, Url, Key, ReqBody) ->
     do_write(post, Path, Headers, Url, Key, ReqBody).
@@ -115,7 +115,6 @@ do_request(Method, Path, Headers, Url, Key, ReqBody) ->
 
 prepare_body(undefined) -> "";
 prepare_body(Body) when is_binary(Body) -> Body.
-
 
 define_options() ->
     [].

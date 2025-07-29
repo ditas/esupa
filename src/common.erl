@@ -53,7 +53,9 @@ log(debug, Type, Source, Result, Reason) ->
 log(error, Type, Source, Result, Reason) ->
     ?LOG_ERROR(?LOG_MAP(Type, Source, Result, Reason));
 log(warning, Type, Source, Result, Reason) ->
-    ?LOG_WARNING(?LOG_MAP(Type, Source, Result, Reason)).
+    ?LOG_WARNING(?LOG_MAP(Type, Source, Result, Reason));
+log(info, Type, Source, Result, Reason) ->
+    ?LOG_INFO(?LOG_MAP(Type, Source, Result, Reason)).
 
 %% internal functions
 
