@@ -31,7 +31,6 @@
     % supa_is,
     % supa_neq,
 
-    request/2,
     request/3,
     execute/1
 ]).
@@ -58,10 +57,6 @@ get_client(Type) ->
         Pid ->
             {ok, Pid}
     end.
-
--spec request(Client :: pid(), Method :: get | post | patch | delete) -> request().
-request(Client, Method) ->
-    {Client, Method, "", [], undefined}.
 
 -spec request(Client :: pid(), Method :: get | post | patch | delete, Schema :: string()) -> request().
 request(Client, Method, Schema) ->
@@ -90,17 +85,17 @@ supa_join({Client, Method, Req0, Headers, Body}, Joins) ->
 
 recursive_join([], Acc, N) ->
     lists:foldr(fun(_, Acc1) -> Acc1 ++ ")" end, Acc, lists:seq(1, N));
-    
+
 recursive_join([{Table, []}|Rest], Acc, N) when N =:= 0 ->
     recursive_join(Rest, Acc ++ "," ++ common:to_list(Table) ++ "(", N+1);
 recursive_join([{Table, []}|Rest], Acc, N) ->
     recursive_join(Rest, Acc ++ common:to_list(Table) ++ "(", N+1);
-    
+
 recursive_join([{Table, Columns}], Acc, N) when N =:= 0 ->
     recursive_join([], Acc ++ "," ++ common:to_list(Table) ++ "(" ++ prepare_comma_separated_list(Columns), N+1);
 recursive_join([{Table, Columns}], Acc, N) ->
     recursive_join([], Acc ++ common:to_list(Table) ++ "(" ++ prepare_comma_separated_list(Columns), N+1);
-    
+
 recursive_join([{Table, Columns}|Rest], Acc, N) when N =:= 0 ->
     recursive_join(Rest, Acc ++ "," ++ common:to_list(Table) ++ "(" ++ prepare_comma_separated_list(Columns) ++ ",", N+1);
 recursive_join([{Table, Columns}|Rest], Acc, N) ->
