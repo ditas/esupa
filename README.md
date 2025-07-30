@@ -50,18 +50,18 @@ Configure your Supabase connection in `sys.config`:
 
 ### 2. Basic HTTP API Usage
 
-```erlang
-%% Get a client connection
-{ok, Client} = esupa:get_client(),
+```elixir
+# Get a client connection
+{ok, client} = :esupa.get_client()
 
-%% Build and execute a query
-Result = esupa:request(Client, get, "public")
-    |> esupa:supa_from("users")
-    |> esupa:supa_select(["id", "name", "email"])
-    |> esupa:supa_eq("active", true)
-    |> esupa:supa_order("created_at", desc)
-    |> esupa:supa_range(0, 10)
-    |> esupa:execute().
+# Build and execute a query
+result = :esupa.request(client, get, 'public')
+    |> :esupa.supa_from('users')
+    |> :esupa.supa_select(['id', 'name', 'email'])
+    |> :esupa.supa_eq('active', true)
+    |> :esupa.supa_order('created_at', desc)
+    |> :esupa.supa_range(0, 10)
+    |> :esupa.execute()
 ```
 
 ### 3. Real-time WebSocket Usage
