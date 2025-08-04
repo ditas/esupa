@@ -94,6 +94,10 @@
     Body :: jsx:json_term()
 }.
 
+-export_type([
+    request/0
+]).
+
 %% @doc Get an available HTTP client for making requests.
 %%
 %% Returns a PID of an available HTTP client from the connection pool.
