@@ -1,17 +1,19 @@
 {"1.2.0",
-[{<<"cowlib">>,{pkg,<<"cowlib">>,<<"2.13.0">>},1},
- {<<"gun">>,{pkg,<<"gun">>,<<"2.1.0">>},0},
+[{<<"cowlib">>,
+  {git,"https://github.com/ninenines/cowlib",
+       {ref,"1fafff3bb465382c386acfa5abe6091b0e250f1b"}},
+  1},
+ {<<"gun">>,
+  {git,"https://github.com/ninenines/gun",
+       {ref,"1fafff3bb465382c386acfa5abe6091b0e250f1b"}},
+  0},
  {<<"jsx">>,{pkg,<<"jsx">>,<<"3.1.0">>},0},
  {<<"recon">>,{pkg,<<"recon">>,<<"2.5.6">>},0}]}.
 [
 {pkg_hash,[
- {<<"cowlib">>, <<"DB8F7505D8332D98EF50A3EF34B34C1AFDDEC7506E4EE4DD4A3A266285D282CA">>},
- {<<"gun">>, <<"B4E4CBBF3026D21981C447E9E7CA856766046EFF693720BA43114D7F5DE36E87">>},
  {<<"jsx">>, <<"D12516BAA0BB23A59BB35DCCAF02A1BD08243FCBB9EFE24F2D9D056CCFF71268">>},
  {<<"recon">>, <<"9052588E83BFEDFD9B72E1034532AEE2A5369D9D9343B61AEB7FBCE761010741">>}]},
 {pkg_hash_ext,[
- {<<"cowlib">>, <<"E1E1284DC3FC030A64B1AD0D8382AE7E99DA46C3246B815318A4B848873800A4">>},
- {<<"gun">>, <<"52FC7FC246BFC3B00E01AEA1C2854C70A366348574AB50C57DFE796D24A0101D">>},
  {<<"jsx">>, <<"0C5CC8FDC11B53CC25CF65AC6705AD39E54ECC56D1C22E4ADB8F5A53FB9427F3">>},
  {<<"recon">>, <<"96C6799792D735CC0F0FD0F86267E9D351E63339CBE03DF9D162010CEFC26BB0">>}]}
 ].
