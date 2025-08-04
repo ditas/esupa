@@ -21,67 +21,74 @@
 - **Connection Pooling**: Multiple WebSocket connection management
 - **Heartbeat Support**: Automatic connection health monitoring
 
-## Installation
+## Installation (examples in Elixir)
 
-Add `esupa` to your `rebar.config` dependencies:
+Add `esupa` to your `mix.exs` dependencies:
 
-```erlang
-{deps, [
-    {esupa, {git, "https://github.com/your-org/esupa.git", {branch, "main"}}}
-]}.
+```elixir
+defp deps do
+[
+    {:esupa, git: "https://github.com/ditas/esupa.git", tag: "0.6.0"}
+]
 ```
 
-## Quick Start
+## Quick Start (examples in Elixir)
 
 ### 1. Configuration
 
-Configure your Supabase connection in `sys.config`:
+Configure your Supabase connection:
 
-```erlang
-{esupa, [
-    {base_url, "your-project.supabase.co"},
-    {rest_url, "/rest/v1/"},
-    {ws_url, "/realtime/v1/websocket"},
-    {key, "your-anon-key"},
-    {http_handler_pool_size, 10},
-    {max_ws_handler_pool_size, 5}
-]}
+```elixir
+config :esupa,
+  env: :prod,
+  esupa_logger_level: :error,
+  http_handler_pool_size: 10,
+  base_url: ~c"<YOUR-PROJECT>.supabase.co",
+  rest_url: ~c"/rest/v1/",
+  key: ~c"<YOUR-PROJECT-KEY>",
+  ws_url: ~c"/realtime/v1/websocket",
+  max_ws_handler_pool_size: 10,
+  httpc_options: [
+    keep_alive_timeout: 0,
+    max_pipeline_length: 0,
+    max_sessions: 0
+  ]
 ```
 
 ### 2. Basic HTTP API Usage
 
-```erlang
-%% Get a client connection
-{ok, Client} = esupa:get_client(),
+```elixir
+# Get a client connection
+{:ok, client} = :esupa.get_client()
 
-%% Build and execute a query
-Result = esupa:request(Client, get, "public")
-    |> esupa:supa_from("users")
-    |> esupa:supa_select(["id", "name", "email"])
-    |> esupa:supa_eq("active", true)
-    |> esupa:supa_order("created_at", desc)
-    |> esupa:supa_range(0, 10)
-    |> esupa:execute().
+# Build and execute a query
+result = :esupa.request(client, get, 'public')
+    |> :esupa.supa_from('users')
+    |> :esupa.supa_select(['id', 'name', 'email'])
+    |> :esupa.supa_eq('active', true)
+    |> :esupa.supa_order('created_at', desc)
+    |> :esupa.supa_range(0, 10)
+    |> :esupa.execute()
 ```
 
 ### 3. Real-time WebSocket Usage
 
-```erlang
-%% Subscribe to table changes
-esupa_websocket_service:subscribe(
-    self(),                           % Receiver PID
-    {"public", "users", "INSERT", ""}, % {Schema, Table, Event, Filter}
-    1                                 % Number of subscribers
-),
+```elixir
+# Subscribe to table changes
+:esupa_websocket_service.subscribe(
+    self(),                           # Receiver PID
+    {'public', 'users', 'INSERT', ''}, # {schema, table, event, filter}
+    1                                 # Number of subscribers
+)
 
-%% Handle incoming changes
+# Handle incoming changes
 receive
-    #{<<"event">> := <<"INSERT">>, <<"new">> := NewRecord} ->
-        io:format("New user created: ~p~n", [NewRecord])
-end.
+    %{"event" => "postgres_changes", "payload" => payload} ->
+        do_something(payload)
+end
 ```
 
-## HTTP API Reference
+## HTTP API Reference (examples in Erlang)
 
 ### Connection Management
 
@@ -175,44 +182,6 @@ OrConditions = [
 Request = esupa:supa_or(Request, OrConditions).
 ```
 
-### Data Modification
-
-#### `supa_insert(Request, Data) -> request()`
-
-Inserts new records into the table.
-
-```erlang
-UserData = #{
-    <<"name">> => <<"John Doe">>,
-    <<"email">> => <<"john@example.com">>,
-    <<"active">> => true
-},
-Request = esupa:supa_insert(Request, UserData).
-```
-
-#### `supa_update(Request, Data) -> request()`
-
-Updates existing records. Combine with filters to specify which records to update.
-
-```erlang
-UpdateData = #{<<"status">> => <<"inactive">>},
-Request = esupa:request(Client, patch, "public")
-    |> esupa:supa_from("users")
-    |> esupa:supa_eq("id", 123)
-    |> esupa:supa_update(UpdateData).
-```
-
-#### `supa_delete(Request) -> request()`
-
-Deletes records. Use with filters to specify which records to delete.
-
-```erlang
-Request = esupa:request(Client, delete, "public")
-    |> esupa:supa_from("users")
-    |> esupa:supa_eq("active", false)
-    |> esupa:supa_delete().
-```
-
 ### Query Modifiers
 
 #### `supa_order(Request, Column, Direction) -> request()`
@@ -249,7 +218,7 @@ Executes the built request and returns the response.
 Result = esupa:execute(Request).
 ```
 
-## WebSocket Real-time API
+## WebSocket Real-time API (examples in Erlang)
 
 ### Subscription Management
 
@@ -283,110 +252,6 @@ esupa_websocket_service:subscribe(
     {"public", "users", "UPDATE", "id=eq.123"},
     1
 ).
-```
-
-### Message Handling
-
-WebSocket messages are delivered to the subscribing process with the following structure:
-
-```erlang
-receive
-    #{
-        <<"event">> := Event,           % "INSERT", "UPDATE", or "DELETE"
-        <<"schema">> := Schema,         % Database schema
-        <<"table">> := Table,           % Table name
-        <<"commit_timestamp">> := TS,   % Transaction timestamp
-        <<"new">> := NewRecord,         % New record data (INSERT/UPDATE)
-        <<"old">> := OldRecord          % Previous record data (UPDATE/DELETE)
-    } ->
-        handle_change(Event, NewRecord, OldRecord)
-end.
-```
-
-## Complete Examples
-
-### User Management System
-
-```erlang
--module(user_manager).
--export([create_user/1, get_active_users/0, listen_for_new_users/0]).
-
-create_user(UserData) ->
-    {ok, Client} = esupa:get_client(),
-    esupa:request(Client, post, "public")
-        |> esupa:supa_from("users")
-        |> esupa:supa_insert(UserData)
-        |> esupa:execute().
-
-get_active_users() ->
-    {ok, Client} = esupa:get_client(),
-    esupa:request(Client, get, "public")
-        |> esupa:supa_from("users")
-        |> esupa:supa_select(["id", "name", "email", "created_at"])
-        |> esupa:supa_eq("active", true)
-        |> esupa:supa_order("created_at", desc)
-        |> esupa:supa_range(0, 49)  % First 50 users
-        |> esupa:execute().
-
-listen_for_new_users() ->
-    esupa_websocket_service:subscribe(
-        self(),
-        {"public", "users", "INSERT", ""},
-        1
-    ),
-    user_change_loop().
-
-user_change_loop() ->
-    receive
-        #{<<"event">> := <<"INSERT">>, <<"new">> := NewUser} ->
-            io:format("New user registered: ~s~n", [
-                maps:get(<<"email">>, NewUser, <<"unknown">>)
-            ]),
-            user_change_loop();
-        Other ->
-            io:format("Received: ~p~n", [Other]),
-            user_change_loop()
-    after 30000 ->
-        io:format("No new users in the last 30 seconds~n"),
-        user_change_loop()
-    end.
-```
-
-### Blog Post System with Real-time Comments
-
-```erlang
--module(blog_system).
--export([get_post_with_comments/1, listen_for_comments/1]).
-
-get_post_with_comments(PostId) ->
-    {ok, Client} = esupa:get_client(),
-    esupa:request(Client, get, "public")
-        |> esupa:supa_from("posts")
-        |> esupa:supa_select([
-            "id", "title", "content", "created_at",
-            "comments(id,content,author,created_at)"
-        ])
-        |> esupa:supa_eq("id", PostId)
-        |> esupa:execute().
-
-listen_for_comments(PostId) ->
-    Filter = "post_id=eq." ++ integer_to_list(PostId),
-    esupa_websocket_service:subscribe(
-        self(),
-        {"public", "comments", "INSERT", Filter},
-        1
-    ),
-    comment_loop(PostId).
-
-comment_loop(PostId) ->
-    receive
-        #{<<"event">> := <<"INSERT">>, <<"new">> := Comment} ->
-            io:format("New comment on post ~p: ~s~n", [
-                PostId,
-                maps:get(<<"content">>, Comment, <<"...">>)
-            ]),
-            comment_loop(PostId)
-    end.
 ```
 
 ## Configuration Options
@@ -480,25 +345,16 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE.md](LIC
 
 ## Dependencies
 
-- **Erlang/OTP 24+**: Required runtime
+- **Erlang/OTP 25+**: Required runtime
 - **gun**: HTTP/WebSocket client
 - **jsx**: JSON encoding/decoding
 - **recon**: Production debugging tools
 
-## Changelog
-
-### v0.6.0
-- Current stable release
-- Full HTTP REST API support
-- WebSocket real-time subscriptions
-- Connection pooling
-- Automatic reconnection handling
-
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-org/esupa/issues)
-- **Documentation**: Generated docs available in `/docs`
-- **Examples**: See `/examples` directory for more use cases
+- **Issues**: [GitHub Issues](https://github.com/ditas/esupa/issues)
+- **Documentation**: Generated docs available in `/docs` (TBD)
+- **Examples**: See `/examples` directory for more use cases (TBD)
 
 ---
 
