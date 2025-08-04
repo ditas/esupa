@@ -19,6 +19,7 @@ start_link() ->
 
 init([]) ->
     {ok, BaseUrl} = application:get_env(?APP, base_url),
+    {ok, ProjectUrl} = application:get_env(?APP, project_url),
     {ok, Key} = application:get_env(?APP, key),
     {ok, HttpcOptions} = application:get_env(?APP, httpc_options),
 
@@ -42,7 +43,8 @@ init([]) ->
                         [
                             {pool_size, HttpPoolSize},
                             {http_config, {
-                                common:to_list(BaseUrl) ++ common:to_list(RestUrl),
+                                common:to_list(ProjectUrl) ++ common:to_list(BaseUrl) ++
+                                    common:to_list(RestUrl),
                                 common:to_list(Key),
                                 HttpcOptions
                             }}
@@ -62,6 +64,7 @@ init([]) ->
                         [
                             {available_pool_size, MaxWSPoolSize},
                             {ws_config, {
+                                common:to_list(ProjectUrl),
                                 common:to_list(BaseUrl),
                                 common:to_list(WSUrl),
                                 common:to_list(Key),

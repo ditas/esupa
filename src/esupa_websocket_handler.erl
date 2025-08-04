@@ -50,13 +50,13 @@ handle_cast(_Msg, State) ->
 handle_info(ready, State) ->
     self() ! init_ws,
     {noreply, State};
-handle_info(init_ws, #{ws_conf := {BaseUrl, WSUrl, Key, _HttpOptions}} = State) ->
-    {ok, ConnPid} = gun:open(BaseUrl, ?DEFAULT_PORT, #{
+handle_info(init_ws, #{ws_conf := {ProjectUrl, BaseUrl, WSUrl, Key, _HttpOptions}} = State) ->
+    {ok, ConnPid} = gun:open(ProjectUrl ++ BaseUrl, ?DEFAULT_PORT, #{
         transport => tls,
         tls_opts => [
             {verify, verify_peer},
             {cacerts, public_key:cacerts_get()},
-            {server_name_indication, "*.supabase.co"}
+            {server_name_indication, ProjectUrl ++ BaseUrl}
         ],
         protocols => [http]
     }),
@@ -134,7 +134,6 @@ code_change(_OldVsn, State, _Extra) ->
 -spec handle_incoming(pid(), term()) -> ok.
 handle_incoming(ReceiverPid, #{<<"event">> := <<"postgres_changes">>, <<"payload">> := Payload}) ->
     common:log(info, proc, websocker_handler, ok, Payload),
-    io:format("Incoming Changes: ~p~n", [Payload]),
     ReceiverPid ! Payload,
     ok;
 handle_incoming(_ReceiverPid, Data) ->
