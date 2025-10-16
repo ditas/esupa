@@ -28,7 +28,7 @@ Add `esupa` to your `mix.exs` dependencies:
 ```elixir
 defp deps do
 [
-    {:esupa, git: "https://github.com/ditas/esupa.git", tag: "0.6.0"}
+    {:esupa, git: "https://github.com/ditas/esupa.git", tag: "0.6.1"}
 ]
 ```
 
@@ -43,15 +43,16 @@ config :esupa,
   env: :prod,
   esupa_logger_level: :error,
   http_handler_pool_size: 10,
-  base_url: ~c"<YOUR-PROJECT>.supabase.co",
+  project_url: <YOUR_PROJECT>,
+  base_url: ~c".supabase.co",
   rest_url: ~c"/rest/v1/",
-  key: ~c"<YOUR-PROJECT-KEY>",
+  key: <YOUR-ANON-OR-SERVICE_KEY>,
   ws_url: ~c"/realtime/v1/websocket",
   max_ws_handler_pool_size: 10,
   httpc_options: [
-    keep_alive_timeout: 0,
-    max_pipeline_length: 0,
-    max_sessions: 0
+    keep_alive_timeout: 100,
+    max_pipeline_length: 100,
+    max_sessions: 100
   ]
 ```
 
@@ -260,9 +261,10 @@ esupa_websocket_service:subscribe(
 
 ```erlang
 {esupa, [
-    {base_url, "your-project.supabase.co"},
+    {base_url, ".supabase.co"},
+    {project_url, "<YOUR_PROJECT>"}.
     {rest_url, "/rest/v1/"},
-    {key, "your-anon-or-service-key"},
+    {key, "<YOUR-ANON-OR-SERVICE_KEY>"},
     {http_handler_pool_size, 10},
     {httpc_options, [
         {keep_alive_timeout, 120000},
@@ -308,16 +310,7 @@ $ ./_build/prod/rel/esupa/bin/esupa daemon
 
 ## Testing
 
-```bash
-# Run unit tests
-$ rebar3 eunit
-
-# Run common tests
-$ rebar3 ct
-
-# Run all tests with coverage
-$ rebar3 cover
-```
+TBD
 
 ## Documentation
 
@@ -326,18 +319,6 @@ Generate documentation using ExDoc:
 ```bash
 $ rebar3 ex_doc
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests (`rebar3 eunit ct`)
-5. Format code (`rebar3 fmt`)
-6. Run linter (`rebar3 lint`)
-7. Commit your changes (`git commit -am 'Add amazing feature'`)
-8. Push to the branch (`git push origin feature/amazing-feature`)
-9. Open a Pull Request
 
 ## License
 
