@@ -28,7 +28,7 @@ Add `esupa` to your `mix.exs` dependencies:
 ```elixir
 defp deps do
 [
-    {:esupa, git: "https://github.com/ditas/esupa.git", tag: "0.6.1"}
+    {:esupa, git: "https://github.com/ditas/esupa.git", tag: "0.6.2"}
 ]
 ```
 
