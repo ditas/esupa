@@ -78,6 +78,11 @@
     %% TODO: supa_is/3, supa_neq/3
 ]).
 
+%% Header modifiers
+-export([
+    supa_header/3
+]).
+
 %% @type request(). Represents a Supabase API request.
 %%
 %% Contains all information needed to execute a request:
@@ -131,7 +136,12 @@ get_client(Type) ->
 -spec request(Client :: pid(), Method :: get | post | patch | delete, Schema :: string()) ->
     request().
 request(Client, Method, Schema) ->
-    {Client, Method, "", [{"Accept-Profile", Schema}], undefined}.
+    {Client, Method, "", [{profile_header(Method), Schema}], undefined}.
+
+%% @private
+%% @doc PostgREST honors Accept-Profile on reads and Content-Profile on writes.
+profile_header(get) -> "Accept-Profile";
+profile_header(_write) -> "Content-Profile".
 
 %% @doc Execute a built request against the Supabase API.
 %%
@@ -281,6 +291,20 @@ supa_order({Client, Method, Req0, Headers, Body}, Column, Order) ->
         Req0 ++ "&" ++ "order" ++ "=" ++ common:to_list(Column) ++ "." ++ common:to_list(Order),
         Headers, Body}.
 
+%% @doc Add a custom HTTP header to the request.
+%%
+%% Appends an arbitrary header (e.g. "Prefer") to the request. Useful for
+%% write operations that need response shaping not covered by a dedicated
+%% supa_* function, such as `Prefer: return=representation`.
+%%
+%% @param Request The request to modify
+%% @param Name Header name
+%% @param Value Header value
+%% @returns Modified request with the header appended
+-spec supa_header(request(), string(), string()) -> request().
+supa_header({Client, Method, Req, Headers, Body}, Name, Value) ->
+    {Client, Method, Req, Headers ++ [{common:to_list(Name), common:to_list(Value)}], Body}.
+
 %% @doc Add equality filter to the query.
 %%
 %% Filters results where the specified column equals the given value.
@@ -293,7 +317,7 @@ supa_order({Client, Method, Req0, Headers, Body}, Column, Order) ->
 supa_eq({Client, Method, Req0, Headers, Body}, Column, Value) ->
     {Client, Method,
         Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "eq." ++
-            common:to_list(Value),
+            common:url_encode(Value),
         Headers, Body}.
 
 %% @doc Add greater-than filter to the query.
@@ -308,7 +332,7 @@ supa_eq({Client, Method, Req0, Headers, Body}, Column, Value) ->
 supa_gt({Client, Method, Req0, Headers, Body}, Column, Value) ->
     {Client, Method,
         Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "gt." ++
-            common:to_list(Value),
+            common:url_encode(Value),
         Headers, Body}.
 
 %% @doc Add greater-than-or-equal filter to the query.
@@ -323,7 +347,7 @@ supa_gt({Client, Method, Req0, Headers, Body}, Column, Value) ->
 supa_gte({Client, Method, Req0, Headers, Body}, Column, Value) ->
     {Client, Method,
         Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "gte." ++
-            common:to_list(Value),
+            common:url_encode(Value),
         Headers, Body}.
 
 %% @doc Add less-than filter to the query.
@@ -338,7 +362,7 @@ supa_gte({Client, Method, Req0, Headers, Body}, Column, Value) ->
 supa_lt({Client, Method, Req0, Headers, Body}, Column, Value) ->
     {Client, Method,
         Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "lt." ++
-            common:to_list(Value),
+            common:url_encode(Value),
         Headers, Body}.
 
 %% @doc Add less-than-or-equal filter to the query.
@@ -353,7 +377,7 @@ supa_lt({Client, Method, Req0, Headers, Body}, Column, Value) ->
 supa_lte({Client, Method, Req0, Headers, Body}, Column, Value) ->
     {Client, Method,
         Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "lte." ++
-            common:to_list(Value),
+            common:url_encode(Value),
         Headers, Body}.
 
 %% @doc Add IN filter to the query.
@@ -368,7 +392,7 @@ supa_lte({Client, Method, Req0, Headers, Body}, Column, Value) ->
 supa_in({Client, Method, Req0, Headers, Body}, Column, Values) ->
     {Client, Method,
         Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "in.(" ++
-            prepare_comma_separated_list(Values) ++ ")",
+            prepare_encoded_comma_separated_list(Values) ++ ")",
         Headers, Body}.
 
 %% @doc Add OR condition to the query.
@@ -422,11 +446,32 @@ prepare_comma_separated_list(List) ->
     Res.
 
 %% @private
-%% @doc Format individual element for URL parameter.
+%% @doc Format individual element for URL parameter. Only used for column
+%% specs (supa_select/supa_join/recursive_join) and supa_or's tuples — Col
+%% and Op there are our own trusted literals (never encoded, so PostgREST's
+%% embedded-resource/rename syntax like "clubs(name)" still works), while
+%% Val (arbitrary caller-supplied data) is percent-encoded.
 prepare_element({Col, Op, Val}) ->
-    common:to_list(Col) ++ "." ++ common:to_list(Op) ++ "." ++ common:to_list(Val);
+    common:to_list(Col) ++ "." ++ common:to_list(Op) ++ "." ++ common:url_encode(Val);
 prepare_element(El) ->
     common:to_list(El).
+
+%% @private
+%% @doc Like prepare_comma_separated_list/1, but for supa_in's Values —
+%% these are plain caller-supplied data (ids, strings, etc.), not column
+%% specs, so every element is percent-encoded.
+prepare_encoded_comma_separated_list(List) ->
+    {Res, _} = lists:foldl(
+        fun
+            (El, {Acc, N}) when N =:= 0 ->
+                {Acc ++ common:url_encode(El), N + 1};
+            (El, {Acc, N}) ->
+                {Acc ++ "," ++ common:url_encode(El), N + 1}
+        end,
+        {"", 0},
+        List
+    ),
+    Res.
 
 %% @private
 %% @doc Determine appropriate URL parameter divider (? or &).

@@ -43,8 +43,15 @@ start_link(TId, HttpConf) ->
     Body :: jsx:json_text() | undefined
 ) ->
     term().
+%% Default gen_server:call timeout (5000ms) is too short: concurrent
+%% same-host requests can queue behind each other (httpc appears to
+%% serialize them rather than truly parallelizing), so a request that's
+%% merely slow — not stuck — was crashing the caller with a timeout exit
+%% instead of eventually returning a real response.
+-define(REQUEST_TIMEOUT, 30_000).
+
 request(Pid, Method, Path, Headers, Body) ->
-    gen_server:call(Pid, {Method, Path, Headers, Body}).
+    gen_server:call(Pid, {Method, Path, Headers, Body}, ?REQUEST_TIMEOUT).
 
 get(Path, Headers, Url, Key, _ReqBody) ->
     do_read(Path, Headers, Url, Key).
