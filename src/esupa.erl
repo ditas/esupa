@@ -68,7 +68,8 @@
     supa_lt/3,
     supa_lte/3,
     supa_in/3,
-    supa_or/2
+    supa_or/2,
+    supa_is/3
 ]).
 
 %% Query modifiers
@@ -318,6 +319,24 @@ supa_eq({Client, Method, Req0, Headers, Body}, Column, Value) ->
     {Client, Method,
         Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "eq." ++
             common:url_encode(Value),
+        Headers, Body}.
+
+%% @doc Add an IS filter to the query (PostgREST's `is` operator).
+%%
+%% Unlike `eq`, PostgREST requires `is` for null/true/false checks — an
+%% `eq.null` filter is not the same thing and won't match. Value should be
+%% one of `null`, `true`, `false` (as atoms or strings) — those are the
+%% only values PostgREST's `is` operator accepts.
+%%
+%% @param Request The request to modify
+%% @param Column Name of the column to filter
+%% @param Value One of null | true | false
+%% @returns Modified request with an IS filter
+-spec supa_is(request(), string(), null | true | false) -> request().
+supa_is({Client, Method, Req0, Headers, Body}, Column, Value) ->
+    {Client, Method,
+        Req0 ++ prepare_divider(Req0) ++ common:to_list(Column) ++ "=" ++ "is." ++
+            common:to_list(Value),
         Headers, Body}.
 
 %% @doc Add greater-than filter to the query.
