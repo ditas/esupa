@@ -123,8 +123,27 @@ do_request(Method, Path, Headers, Url, Key, ReqBody) ->
 prepare_body(undefined) -> "";
 prepare_body(Body) when is_binary(Body) -> Body.
 
+%% httpc:request/4 is called as (Method, Request, define_options(),
+%% define_http_options()) below — i.e. define_options/0 is the 3rd
+%% positional arg (HTTPOptions, where timeout/connect_timeout actually
+%% belong) and define_http_options/0 is the 4th (Options, a different set
+%% that doesn't accept those keys — hence "Invalid option ignored" when
+%% they were in the wrong one). Confusing given the names, but that's the
+%% existing call shape.
+%%
+%% HTTPOptions had no timeout at all (infinity), so a hung request
+%% (network issue, stuck connection, or just a slow query) would block the
+%% calling gen_server worker forever — past even the caller's own
+%% ?REQUEST_TIMEOUT gen_server:call bound, since that only times out the
+%% caller, not this process. The worker never reaches `self() ! ready`, so
+%% it never rejoins the pool: every such hang permanently loses one of the
+%% (fixed-size) pool workers. Bounding both here means a hung request now
+%% fails and lets the worker recover.
+-define(HTTP_TIMEOUT, 25_000).
+-define(HTTP_CONNECT_TIMEOUT, 10_000).
+
 define_options() ->
-    [].
+    [{timeout, ?HTTP_TIMEOUT}, {connect_timeout, ?HTTP_CONNECT_TIMEOUT}].
 
 define_http_options() ->
     [].
