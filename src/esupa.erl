@@ -284,9 +284,11 @@ supa_range({Client, Method, Req0, Headers, Body}, Min, Max) ->
 %%
 %% @param Request The request to modify
 %% @param Column Name of the column to sort by
-%% @param Order Sort direction (asc or desc)
+%% @param Order Sort direction: the atom `asc`/`desc`, or a PostgREST order
+%%              clause string for multi-column/nulls ordering (e.g.
+%%              "asc,id.asc", "position.asc.nullslast")
 %% @returns Modified request with ordering
--spec supa_order(request(), string(), asc | desc) -> request().
+-spec supa_order(request(), string(), asc | desc | string()) -> request().
 supa_order({Client, Method, Req0, Headers, Body}, Column, Order) ->
     {Client, Method,
         Req0 ++ "&" ++ "order" ++ "=" ++ common:to_list(Column) ++ "." ++ common:to_list(Order),
